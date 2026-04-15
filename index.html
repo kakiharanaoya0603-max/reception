@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>買取サロン 受付システム</title>
+<style>
+/* =============================
+   ★ ログイン情報の変更はここ ★
+   下記の LOGIN_ID と LOGIN_PASS を
+   変更してください（14行目付近）
+   ============================= */
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Hiragino Sans',Meiryo,sans-serif;background:#f5f5f5;color:#1a1a1a;font-size:16px}
+
+/* ログイン画面 */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f0f4f8}
+.login-box{background:#fff;border-radius:16px;padding:2rem 1.75rem;width:320px;box-shadow:0 2px 12px rgba(0,0,0,0.08)}
+.login-logo{text-align:center;margin-bottom:1.5rem}
+.login-logo h1{font-size:18px;font-weight:500;color:#1a1a1a;margin-bottom:4px}
+.login-logo p{font-size:13px;color:#888}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:13px;font-weight:500;color:#555;margin-bottom:5px}
+.form-group input{width:100%;padding:11px 14px;border:1px solid #ddd;border-radius:10px;font-size:15px;background:#fff;color:#1a1a1a;transition:border-color 0.15s}
+.form-group input:focus{outline:none;border-color:#185FA5}
+.login-error{background:#fcebeb;border:1px solid #f09595;border-radius:8px;padding:9px 12px;font-size:13px;color:#791F1F;margin-bottom:1rem;display:none}
+.btn-login{width:100%;padding:13px;background:#185FA5;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;transition:background 0.15s}
+.btn-login:hover{background:#0C447C}
+
+/* メイン画面 */
+#main-screen{display:none;min-height:100vh;background:#f5f5f5}
+.top-tabs{display:flex;background:#fff;border-bottom:1px solid #e8e8e8;position:sticky;top:0;z-index:50}
+.top-tab{flex:1;padding:12px 8px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;color:#888;border-bottom:3px solid transparent;transition:all 0.15s}
+.top-tab:hover{background:#f9f9f9}
+.top-tab.active{color:#185FA5;border-bottom-color:#185FA5}
+.top-tab.busy-tab.active{color:#854F0B;border-bottom-color:#EF9F27}
+.busy-badge{display:inline-block;background:#FAEEDA;color:#854F0B;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:3px;vertical-align:middle}
+.busy-badge.on{background:#EF9F27;color:#fff}
+
+/* 共通 */
+.screen{display:none;padding:1.5rem 1rem}
+.screen.active{display:block}
+.card{background:#fff;border-radius:14px;padding:1.25rem;border:1px solid #ebebeb;margin-bottom:1rem}
+.page-title{font-size:20px;font-weight:500;color:#1a1a1a;margin-bottom:6px}
+.page-sub{font-size:14px;color:#888;margin-bottom:1.5rem}
+
+/* ステップインジケーター */
+.step-indicator{display:flex;gap:6px;margin-bottom:1.5rem;justify-content:center}
+.step-dot{width:8px;height:8px;border-radius:50%;background:#e0e0e0;border:1px solid #ccc}
+.step-dot.done{background:#185FA5;border-color:#185FA5}
+.step-dot.active{background:#378ADD;border-color:#185FA5}
+
+/* ボタン類 */
+.btn{display:inline-block;padding:10px 20px;border:1px solid #ddd;border-radius:10px;background:#fff;color:#1a1a1a;font-size:14px;cursor:pointer;transition:background 0.15s;font-family:inherit}
+.btn:hover{background:#f5f5f5}
+.btn-primary{background:#185FA5;color:#fff;border-color:#185FA5}
+.btn-primary:hover{background:#0C447C;border-color:#0C447C}
+.btn-success{background:#3B6D11;color:#fff;border-color:#3B6D11}
+.btn-success:hover{background:#27500A}
+.btn-danger{background:#A32D2D;color:#fff;border-color:#A32D2D}
+.btn-danger:hover{background:#791F1F}
+.btn-block{width:100%;padding:14px;font-size:15px}
+.btn-sm{font-size:12px;padding:6px 12px}
+
+/* 選択ボタン（初回/再来） */
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.choice-btn{padding:18px 12px;border:1px solid #ddd;border-radius:12px;background:#fff;color:#1a1a1a;font-size:15px;cursor:pointer;text-align:center;transition:all 0.15s;font-family:inherit}
+.choice-btn:hover{background:#f5f5f5}
+.choice-btn.selected{border:2px solid #185FA5;background:#E6F1FB;color:#0C447C;font-weight:500}
+
+/* カテゴリ */
+.category-block{margin-bottom:10px}
+.cat-header{font-size:14px;font-weight:500;color:#1a1a1a;padding:10px 14px;background:#f8f8f8;border-radius:10px 10px 0 0;border:1px solid #ebebeb;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.cat-header.has-selected{background:#E6F1FB;border-color:#85B7EB;color:#0C447C}
+.cat-items{border:1px solid #ebebeb;border-top:none;border-radius:0 0 10px 10px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;background:#fff}
+.item-btn{padding:7px 16px;border:1px solid #ddd;border-radius:20px;background:#fff;color:#1a1a1a;font-size:13px;cursor:pointer;transition:all 0.15s;font-family:inherit}
+.item-btn:hover{background:#f5f5f5}
+.item-btn.selected{background:#185FA5;color:#fff;border-color:#185FA5;font-weight:500}
+
+/* サマリーバー */
+.summary-bar{background:#E6F1FB;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#0C447C;display:none}
+
+/* インフォボックス */
+.info-box{background:#E6F1FB;border:1px solid #85B7EB;border-radius:10px;padding:12px;margin-bottom:12px;font-size:14px;color:#042C53}
+.notice-box{background:#FAEEDA;border:1px solid #EF9F27;border-radius:10px;padding:12px;margin:1rem 0;font-size:14px;color:#633806;line-height:1.6}
+.success-box{background:#EAF3DE;border:1px solid #97C459;border-radius:10px;padding:16px;margin:1rem 0;text-align:center;color:#27500A}
+
+/* テキスト入力 */
+input[type=tel],input[type=text],input[type=password]{width:100%;padding:11px 14px;border:1px solid #ddd;border-radius:10px;font-size:15px;background:#fff;color:#1a1a1a;font-family:inherit}
+input:focus{outline:none;border-color:#185FA5}
+.input-label{font-size:13px;font-weight:500;color:#555;margin-bottom:5px;margin-top:12px;display:block}
+.input-hint{font-size:12px;color:#888;margin-bottom:6px}
+
+/* バッジ */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+.badge-new{background:#E6F1FB;color:#0C447C}
+.badge-wait{background:#FAEEDA;color:#633806}
+.badge-called{background:#EAF3DE;color:#27500A}
+
+/* 受付完了画面 */
+.done-icon{width:60px;height:60px;border-radius:50%;background:#EAF3DE;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:28px;color:#3B6D11}
+.ticket-num{font-size:56px;font-weight:600;color:#185FA5;line-height:1;margin-bottom:4px}
+
+/* 混雑タブ */
+.phone-card{background:#fff;border:1px solid #ebebeb;border-radius:12px;padding:1rem;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+
+/* スタッフ管理 */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+.stat-card{background:#f8f8f8;border-radius:10px;padding:10px;text-align:center}
+.stat-label{font-size:11px;color:#888;margin-bottom:2px}
+.stat-value{font-size:22px;font-weight:500}
+.queue-table{width:100%;border-collapse:collapse;font-size:13px}
+.queue-table th{padding:8px 6px;text-align:left;border-bottom:1px solid #e0e0e0;color:#888;font-weight:500;font-size:12px}
+.queue-table td{padding:9px 6px;border-bottom:1px solid #f0f0f0;color:#1a1a1a;vertical-align:top}
+.queue-table tr.called td{color:#aaa;text-decoration:line-through}
+.no-data{text-align:center;padding:2rem;color:#aaa;font-size:14px}
+
+/* 待ちトグル */
+.wait-toggle{display:flex;align-items:center;gap:12px;background:#f8f8f8;border-radius:10px;padding:12px 14px;margin-bottom:1rem}
+.toggle-track{width:46px;height:26px;border-radius:13px;background:#ccc;position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0}
+.toggle-track.on{background:#EF9F27}
+.toggle-thumb{position:absolute;top:4px;left:4px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle-track.on .toggle-thumb{left:24px}
+
+/* ログアウトボタン */
+.logout-btn{font-size:12px;padding:6px 12px;background:#f8f8f8;border:1px solid #ddd;border-radius:8px;cursor:pointer;color:#555;font-family:inherit}
+.logout-btn:hover{background:#eee}
+
+/* レスポンシブ */
+@media(max-width:480px){
+  .choice-btn{padding:14px 8px;font-size:14px}
+  .ticket-num{font-size:48px}
+}
+</style>
+</head>
+<body>
+
+<!-- ========== ログイン画面 ========== -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>買取サロン</h1>
+      <p>スタッフ専用システム</p>
+    </div>
+    <div id="login-error" class="login-error">IDまたはパスワードが違います</div>
+    <div class="form-group">
+      <label>ログインID</label>
+      <input type="text" id="login-id" placeholder="ログインIDを入力" autocomplete="off" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+    </div>
+    <div class="form-group">
+      <label>パスワード</label>
+      <input type="password" id="login-pass" placeholder="パスワードを入力" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-login" onclick="doLogin()">ログイン</button>
+    <p style="font-size:11px;color:#bbb;text-align:center;margin-top:1rem">このシステムはスタッフ専用です</p>
+  </div>
+</div>
+
+<!-- ========== メイン画面 ========== -->
+<div id="main-screen">
+
+  <!-- タブ -->
+  <div class="top-tabs">
+    <div class="top-tab active" id="tab-reception" onclick="switchTab('reception')">受付</div>
+    <div class="top-tab busy-tab" id="tab-busy" onclick="switchTab('busy')">混雑中 <span class="busy-badge" id="busy-badge">OFF</span></div>
+    <div class="top-tab" id="tab-staff" onclick="switchTab('staff')">管理</div>
+    <div style="display:flex;align-items:center;padding:0 10px">
+      <button class="logout-btn" onclick="doLogout()">ログアウト</button>
+    </div>
+  </div>
+
+  <!-- ===== 受付タブ ===== -->
+  <div id="tab-content-reception">
+
+    <!-- STEP1 -->
+    <div id="screen-1" class="screen active">
+      <div style="text-align:center;padding:1.5rem 0 0.5rem">
+        <div style="font-size:26px;font-weight:500;margin-bottom:6px">いらっしゃいませ</div>
+        <div style="font-size:14px;color:#888;margin-bottom:1.5rem">受付をご案内いたします</div>
+      </div>
+      <div class="step-indicator">
+        <div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div><div class="step-dot"></div>
+      </div>
+      <div class="card">
+        <div class="page-title">① 当店のご利用について</div>
+        <div class="page-sub">当店のご利用は初めてですか？</div>
+        <div class="choice-grid">
+          <button class="choice-btn" id="btn-first" onclick="selectFirst(true)">はじめて</button>
+          <button class="choice-btn" id="btn-repeat" onclick="selectFirst(false)">2回目以降</button>
+        </div>
+        <button class="btn btn-primary btn-block" id="next1-btn" onclick="goStep2()" style="display:none">次へ進む</button>
+      </div>
+    </div>
+
+    <!-- STEP2 -->
+    <div id="screen-2" class="screen">
+      <div class="step-indicator">
+        <div class="step-dot done"></div><div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div>
+      </div>
+      <div class="card">
+        <div class="page-title">② お品物の選択</div>
+        <div class="page-sub">お持ちのお品物をお選びください（複数選択可）</div>
+        <div class="summary-bar" id="summary-bar"></div>
+        <div id="categories"></div>
+        <button class="btn btn-primary btn-block" id="next2-btn" onclick="goStep3()" style="display:none;margin-top:1rem">次へ進む</button>
+      </div>
+    </div>
+
+    <!-- STEP3 -->
+    <div id="screen-3" class="screen">
+      <div class="step-indicator">
+        <div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot active"></div><div class="step-dot"></div>
+      </div>
+      <div class="card">
+        <div class="page-title">③ 本人確認書類</div>
+        <div class="page-sub">ご成約の場合のみ必要です</div>
+        <div class="info-box">お持ちの書類をお選びください（複数選択可）</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px" id="id-grid">
+          <button class="item-btn" onclick="this.classList.toggle('selected')">マイナンバーカード</button>
+          <button class="item-btn" onclick="this.classList.toggle('selected')">運転免許証</button>
+          <button class="item-btn" onclick="this.classList.toggle('selected')">健康保険証</button>
+          <button class="item-btn" onclick="this.classList.toggle('selected')">後期高齢者被保険証</button>
+          <button class="item-btn" onclick="this.classList.toggle('selected')">住基カード</button>
+          <button class="item-btn" id="other-id-btn" onclick="toggleOtherId()">その他</button>
+        </div>
+        <div id="other-id-wrap" style="display:none;margin-bottom:12px">
+          <span class="input-label">その他の書類名</span>
+          <input type="text" id="other-id-text" placeholder="例：パスポート、在留カード">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="goStep4()">次へ進む</button>
+      </div>
+    </div>
+
+    <!-- STEP4 -->
+    <div id="screen-4" class="screen">
+      <div class="step-indicator">
+        <div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot done"></div><div class="step-dot active"></div>
+      </div>
+      <div class="card">
+        <div class="page-title">④ 受付完了</div>
+        <div id="wait-notice" style="display:none"></div>
+        <div class="success-box">
+          <div style="font-size:17px;font-weight:500;margin-bottom:6px">受付が完了しました</div>
+          <div style="font-size:14px">査定員がご案内いたします</div>
+          <div style="font-size:14px;margin-top:4px">待合席にてお待ちください</div>
+        </div>
+        <span class="input-label" style="margin-top:1rem">お電話番号（任意）</span>
+        <p class="input-hint">順番になり次第、お電話でご連絡することができます</p>
+        <input type="tel" id="phone-input" placeholder="例：090-1234-5678" maxlength="13" oninput="formatPhone(this)">
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-primary" onclick="submitReception(true)" style="flex:1;padding:13px">番号を登録して完了</button>
+          <button class="btn" onclick="submitReception(false)" style="flex:1;padding:13px">登録せずに完了</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 完了 -->
+    <div id="screen-done" class="screen">
+      <div style="text-align:center;padding:2rem 1rem">
+        <div class="done-icon">✓</div>
+        <div style="font-size:20px;font-weight:500;margin-bottom:6px">ありがとうございます</div>
+        <div style="font-size:14px;color:#888;margin-bottom:1.5rem">待合席にてお待ちください</div>
+        <div class="ticket-num" id="ticket-number"></div>
+        <div style="font-size:13px;color:#888;margin-bottom:2rem">受付番号</div>
+        <button class="btn btn-primary" onclick="resetAll()" style="padding:14px 40px">最初に戻る</button>
+      </div>
+    </div>
+
+  </div><!-- /tab-content-reception -->
+
+  <!-- ===== 混雑中タブ ===== -->
+  <div id="tab-content-busy" style="display:none">
+    <div style="padding:1.5rem 1rem">
+      <div style="font-size:18px;font-weight:500;margin-bottom:4px">混雑中管理</div>
+      <div style="font-size:13px;color:#888;margin-bottom:1.5rem">電話番号を登録されたお客様一覧</div>
+      <div class="wait-toggle">
+        <div id="wait-track" class="toggle-track" onclick="toggleWait()"><div class="toggle-thumb"></div></div>
+        <div>
+          <div style="font-size:13px;font-weight:500">待ち時間30分以上の表示</div>
+          <div id="wait-status" style="font-size:12px;color:#888">現在：OFF（受付画面に非表示）</div>
+        </div>
+      </div>
+      <div id="phone-list"></div>
+    </div>
+  </div>
+
+  <!-- ===== 管理タブ ===== -->
+  <div id="tab-content-staff" style="display:none">
+    <div style="padding:1rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <div style="font-size:18px;font-weight:500">受付管理</div>
+        <button class="btn btn-danger btn-sm" onclick="clearAll()">全クリア</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">総受付数</div>
+          <div class="stat-value" id="stat-total" style="color:#1a1a1a">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">待機中</div>
+          <div class="stat-value" id="stat-waiting" style="color:#185FA5">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">呼び出し済</div>
+          <div class="stat-value" id="stat-called" style="color:#3B6D11">0</div>
+        </div>
+      </div>
+      <div id="queue-list"></div>
+    </div>
+  </div>
+
+</div><!-- /main-screen -->
+
+<script>
+// =============================================
+// ★ ログイン情報の変更はここを書き換えてください ★
+// =============================================
+const LOGIN_ID   = "timeless-kaitori";
+const LOGIN_PASS = "Tml@1234";
+// =============================================
+
+const cats = [
+  {id:"gold",  name:"貴金属",    items:["インゴット","小判","金貨","リング","ネックレス","ピアス","イヤリング","ペンダント"]},
+  {id:"jewel", name:"ジュエリー", items:["ダイア","ルビー","サファイア","エメラルド","パール","サンゴ"]},
+  {id:"bag",   name:"バッグ・小物",items:["LV","Hermès","CHANEL","GUCCI","COACH","フェラガモ","ロエベ","プラダ"]},
+  {id:"watch", name:"時計",      items:["セイコー","オーデマピゲ","ピアジェ","カシオ","タグホイヤー"]},
+  {id:"stamp", name:"切手",      items:[]},
+  {id:"teleca",name:"テレカ",    items:[]},
+  {id:"coin",  name:"古銭",      items:[]}
+];
+
+let state = {isFirst:null, selectedItems:{}, waitMode:false, queue:[], ticketCounter:0};
+
+// ---------- ログイン ----------
+function doLogin(){
+  const id   = document.getElementById("login-id").value.trim();
+  const pass = document.getElementById("login-pass").value;
+  if(id === LOGIN_ID && pass === LOGIN_PASS){
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("main-screen").style.display  = "block";
+    buildCategories();
+  } else {
+    document.getElementById("login-error").style.display = "block";
+    document.getElementById("login-pass").value = "";
+  }
+}
+
+function doLogout(){
+  if(confirm("ログアウトしますか？")){
+    document.getElementById("login-id").value   = "";
+    document.getElementById("login-pass").value = "";
+    document.getElementById("login-error").style.display = "none";
+    document.getElementById("main-screen").style.display  = "none";
+    document.getElementById("login-screen").style.display = "flex";
+  }
+}
+
+// ---------- タブ切り替え ----------
+function switchTab(tab){
+  ["reception","busy","staff"].forEach(t=>{
+    document.getElementById("tab-"+t).classList.remove("active");
+    const c = document.getElementById("tab-content-"+t);
+    if(c) c.style.display = "none";
+  });
+  document.getElementById("tab-"+tab).classList.add("active");
+  document.getElementById("tab-content-"+tab).style.display = "block";
+  if(tab==="busy")  renderPhoneList();
+  if(tab==="staff") renderQueue();
+}
+
+// ---------- カテゴリ構築 ----------
+function buildCategories(){
+  const el = document.getElementById("categories");
+  el.innerHTML = cats.map(c=>`
+    <div class="category-block">
+      <div class="cat-header" id="catheader-${c.id}" onclick="toggleCat('${c.id}')">
+        <span>${c.name} <span id="catcount-${c.id}" style="font-size:11px;display:none;background:#185FA5;color:#fff;border-radius:10px;padding:1px 7px;margin-left:4px"></span></span>
+        <span id="arrow-${c.id}">▼</span>
+      </div>
+      <div class="cat-items" id="cat-${c.id}">
+        ${c.items.length
+          ? c.items.map(item=>`<button class="item-btn" onclick="toggleItem('${c.id}','${item}',this)">${item}</button>`).join("")
+          : `<button class="item-btn" onclick="toggleCat2('${c.id}',this)">${c.name}全般</button>`
+        }
+      </div>
+    </div>`).join("");
+}
+
+function toggleCat(id){
+  const el    = document.getElementById("cat-"+id);
+  const arrow = document.getElementById("arrow-"+id);
+  const hidden = el.style.display === "none";
+  el.style.display = hidden ? "flex" : "none";
+  arrow.textContent = hidden ? "▼" : "▶";
+}
+
+function toggleItem(catId, item, btn){
+  if(!state.selectedItems[catId]) state.selectedItems[catId]=[];
+  const idx = state.selectedItems[catId].indexOf(item);
+  if(idx>-1){ state.selectedItems[catId].splice(idx,1); btn.classList.remove("selected"); }
+  else       { state.selectedItems[catId].push(item);   btn.classList.add("selected"); }
+  updateCatHeader(catId);
+  updateSummary();
+  updateNext2();
+}
+
+function toggleCat2(catId, btn){
+  if(!state.selectedItems[catId]) state.selectedItems[catId]=[];
+  if(state.selectedItems[catId].includes("全般")){ state.selectedItems[catId]=[]; btn.classList.remove("selected"); }
+  else { state.selectedItems[catId]=["全般"]; btn.classList.add("selected"); }
+  updateCatHeader(catId);
+  updateSummary();
+  updateNext2();
+}
+
+function updateCatHeader(catId){
+  const count  = state.selectedItems[catId] ? state.selectedItems[catId].length : 0;
+  const header = document.getElementById("catheader-"+catId);
+  const badge  = document.getElementById("catcount-"+catId);
+  if(count>0){ header.classList.add("has-selected"); badge.style.display="inline"; badge.textContent=count; }
+  else        { header.classList.remove("has-selected"); badge.style.display="none"; }
+}
+
+function updateSummary(){
+  const bar   = document.getElementById("summary-bar");
+  const parts = [];
+  Object.entries(state.selectedItems).forEach(([catId,arr])=>{
+    if(arr.length){ const cat=cats.find(c=>c.id===catId); parts.push(cat.name+(arr[0]==="全般"?"":"（"+arr.join("・")+"）")); }
+  });
+  if(parts.length){ bar.style.display="block"; bar.innerHTML="選択中："+parts.join("　/　"); }
+  else { bar.style.display="none"; }
+}
+
+function updateNext2(){
+  const any = Object.values(state.selectedItems).some(a=>a.length>0);
+  document.getElementById("next2-btn").style.display = any ? "block" : "none";
+}
+
+// ---------- ステップ遷移 ----------
+function selectFirst(val){
+  state.isFirst = val;
+  document.getElementById("btn-first").classList.toggle("selected", val);
+  document.getElementById("btn-repeat").classList.toggle("selected", !val);
+  document.getElementById("next1-btn").style.display = "block";
+}
+
+function toggleOtherId(){
+  const btn  = document.getElementById("other-id-btn");
+  const wrap = document.getElementById("other-id-wrap");
+  btn.classList.toggle("selected");
+  wrap.style.display = btn.classList.contains("selected") ? "block" : "none";
+}
+
+function goStep2(){ showReceptionScreen("screen-2"); }
+function goStep3(){ showReceptionScreen("screen-3"); }
+
+function goStep4(){
+  showReceptionScreen("screen-4");
+  const wn = document.getElementById("wait-notice");
+  if(state.waitMode){
+    wn.style.display = "block";
+    wn.innerHTML = `<div class="notice-box">現在、<strong>30分以上</strong>の待ち時間が発生しています。<br>お電話番号をご登録いただくと、順番になり次第ご連絡いたします。</div>`;
+  } else { wn.style.display = "none"; }
+}
+
+function formatPhone(input){
+  let v = input.value.replace(/\D/g,"");
+  if(v.length>11) v=v.slice(0,11);
+  if(v.length>7)      input.value = v.slice(0,3)+"-"+v.slice(3,7)+"-"+v.slice(7);
+  else if(v.length>3) input.value = v.slice(0,3)+"-"+v.slice(3);
+  else                input.value = v;
+}
+
+function submitReception(withPhone){
+  const phoneEl = document.getElementById("phone-input");
+  const phone   = withPhone && phoneEl ? phoneEl.value : "";
+  state.ticketCounter++;
+  const num   = String(state.ticketCounter).padStart(3,"0");
+  const items = [];
+  Object.entries(state.selectedItems).forEach(([catId,arr])=>{
+    if(arr.length){ const cat=cats.find(c=>c.id===catId); items.push(cat.name+(arr[0]==="全般"?"":"（"+arr.join("・")+"）")); }
+  });
+  const ids = Array.from(document.querySelectorAll("#id-grid .item-btn.selected")).map(el=>{
+    if(el.id==="other-id-btn"){ const t=document.getElementById("other-id-text").value; return t?"その他（"+t+"）":"その他"; }
+    return el.textContent;
+  });
+  state.queue.push({num, time:new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}), isFirst:state.isFirst, items, phone, ids, called:false});
+  document.getElementById("ticket-number").textContent = num;
+  showReceptionScreen("screen-done");
+  renderQueue();
+  renderPhoneList();
+}
+
+function resetAll(){
+  state.isFirst = null; state.selectedItems = {};
+  const pi = document.getElementById("phone-input"); if(pi) pi.value="";
+  const ot = document.getElementById("other-id-text"); if(ot) ot.value="";
+  document.querySelectorAll(".item-btn.selected").forEach(b=>b.classList.remove("selected"));
+  document.getElementById("other-id-wrap").style.display  = "none";
+  document.getElementById("summary-bar").style.display    = "none";
+  buildCategories();
+  document.getElementById("btn-first").classList.remove("selected");
+  document.getElementById("btn-repeat").classList.remove("selected");
+  document.getElementById("next1-btn").style.display = "none";
+  document.getElementById("next2-btn").style.display = "none";
+  showReceptionScreen("screen-1");
+}
+
+function showReceptionScreen(id){
+  document.querySelectorAll("#tab-content-reception .screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// ---------- 待ち時間トグル ----------
+function toggleWait(){
+  state.waitMode = !state.waitMode;
+  document.getElementById("wait-track").classList.toggle("on", state.waitMode);
+  document.getElementById("wait-status").textContent = "現在："+(state.waitMode?"ON（受付画面に表示中）":"OFF（受付画面に非表示）");
+  const badge = document.getElementById("busy-badge");
+  badge.textContent = state.waitMode ? "ON" : "OFF";
+  badge.classList.toggle("on", state.waitMode);
+}
+
+// ---------- 混雑タブ ----------
+function renderPhoneList(){
+  const el        = document.getElementById("phone-list");
+  const withPhone = state.queue.filter(q=>q.phone);
+  if(!withPhone.length){ el.innerHTML=`<div class="no-data">電話番号を登録されたお客様はいません</div>`; return; }
+  el.innerHTML = withPhone.map(q=>`
+    <div class="phone-card">
+      <div>
+        <div style="font-size:13px;font-weight:500">受付 ${q.num}　<span class="badge ${q.isFirst?'badge-new':'badge-wait'}">${q.isFirst?'初回':'再来'}</span></div>
+        <div style="font-size:12px;color:#888;margin-top:2px">${q.time}　${q.items.join(" / ")}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:14px;font-weight:500;margin-bottom:4px">${q.phone}</div>
+        ${!q.called
+          ? `<button class="btn btn-success btn-sm" onclick="markCalled('${q.num}')">呼出済にする</button>`
+          : `<span class="badge badge-called">呼出済</span>`}
+      </div>
+    </div>`).join("");
+}
+
+// ---------- 管理タブ ----------
+function renderQueue(){
+  const el      = document.getElementById("queue-list");
+  const waiting = state.queue.filter(q=>!q.called).length;
+  const called  = state.queue.filter(q=>q.called).length;
+  document.getElementById("stat-total").textContent   = state.queue.length;
+  document.getElementById("stat-waiting").textContent = waiting;
+  document.getElementById("stat-called").textContent  = called;
+  if(!state.queue.length){ el.innerHTML=`<div class="no-data">受付はまだありません</div>`; return; }
+  el.innerHTML = `<table class="queue-table">
+    <thead><tr><th>番号</th><th>時刻</th><th>お品物</th><th>電話番号</th><th>操作</th></tr></thead>
+    <tbody>${state.queue.slice().reverse().map(q=>`
+    <tr class="${q.called?'called':''}">
+      <td><strong>${q.num}</strong><br><span class="badge ${q.isFirst?'badge-new':'badge-wait'}">${q.isFirst?'初回':'再来'}</span></td>
+      <td style="white-space:nowrap;font-size:12px">${q.time}</td>
+      <td style="font-size:12px">${q.items.join("<br>")}</td>
+      <td style="font-size:13px;font-weight:500">${q.phone||'<span style="color:#ccc;font-weight:400">なし</span>'}</td>
+      <td>${!q.called
+        ? `<button class="btn btn-success btn-sm" onclick="markCalled('${q.num}')">呼出済</button>`
+        : `<span class="badge badge-called">呼出済</span>`}
+      </td>
+    </tr>`).join("")}
+    </tbody></table>`;
+}
+
+function markCalled(num){
+  const entry = state.queue.find(q=>q.num===num);
+  if(entry) entry.called = true;
+  renderQueue();
+  renderPhoneList();
+}
+
+function clearAll(){
+  if(confirm("受付リストを全て削除してもよいですか？\nこの操作は元に戻せません。")){
+    state.queue=[]; state.ticketCounter=0;
+    renderQueue(); renderPhoneList();
+  }
+}
+</script>
+</body>
+</html>
