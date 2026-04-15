@@ -164,7 +164,7 @@ input:focus{outline:none;border-color:#185FA5}
   <div class="top-tabs">
     <div class="top-tab active" id="tab-reception" onclick="switchTab('reception')">受付</div>
     <div class="top-tab busy-tab" id="tab-busy" onclick="switchTab('busy')">混雑中 <span class="busy-badge" id="busy-badge">OFF</span></div>
-    <div class="top-tab" id="tab-staff" onclick="switchTab('staff')">管理</div>
+    <div class="top-tab" id="tab-staff" onclick="openStaffModal()">管理</div>
     <div style="display:flex;align-items:center;padding:0 10px">
       <button class="logout-btn" onclick="doLogout()">ログアウト</button>
     </div>
@@ -285,6 +285,20 @@ input:focus{outline:none;border-color:#185FA5}
     </div>
   </div>
 
+  <!-- 管理タブ用パスワードモーダル -->
+  <div id="staff-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:16px;padding:1.75rem;width:300px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+      <div style="font-size:16px;font-weight:500;margin-bottom:4px">管理画面</div>
+      <div style="font-size:13px;color:#888;margin-bottom:1rem">パスワードを入力してください</div>
+      <div id="staff-modal-error" style="background:#fcebeb;border:1px solid #f09595;border-radius:8px;padding:8px 12px;font-size:13px;color:#791F1F;margin-bottom:10px;display:none">パスワードが違います</div>
+      <input type="password" id="staff-modal-pass" placeholder="パスワード" onkeydown="if(event.key==='Enter')checkStaffPass()" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="checkStaffPass()" style="flex:1;padding:11px">確認</button>
+        <button class="btn" onclick="closeStaffModal()" style="flex:1;padding:11px">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== 管理タブ ===== -->
   <div id="tab-content-staff" style="display:none">
     <div style="padding:1rem">
@@ -367,6 +381,28 @@ function switchTab(tab){
   document.getElementById("tab-content-"+tab).style.display = "block";
   if(tab==="busy")  renderPhoneList();
   if(tab==="staff") renderQueue();
+}
+
+// ---------- 管理タブ パスワード認証 ----------
+function openStaffModal(){
+  document.getElementById("staff-modal-pass").value = "";
+  document.getElementById("staff-modal-error").style.display = "none";
+  document.getElementById("staff-modal").style.display = "flex";
+  setTimeout(()=>document.getElementById("staff-modal-pass").focus(), 100);
+}
+
+function closeStaffModal(){
+  document.getElementById("staff-modal").style.display = "none";
+}
+
+function checkStaffPass(){
+  if(document.getElementById("staff-modal-pass").value === LOGIN_PASS){
+    closeStaffModal();
+    switchTab("staff");
+  } else {
+    document.getElementById("staff-modal-error").style.display = "block";
+    document.getElementById("staff-modal-pass").value = "";
+  }
 }
 
 // ---------- カテゴリ構築 ----------
