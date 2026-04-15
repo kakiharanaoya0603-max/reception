@@ -335,13 +335,13 @@ const LOGIN_PASS = "Tml@1234";
 // =============================================
 
 const cats = [
-  {id:"gold",  name:"貴金属",    items:["インゴット","小判","金貨","リング","ネックレス","ピアス","イヤリング","ペンダント"]},
-  {id:"jewel", name:"ジュエリー", items:["ダイア","ルビー","サファイア","エメラルド","パール","サンゴ"]},
-  {id:"bag",   name:"バッグ・小物",items:["LV","Hermès","CHANEL","GUCCI","COACH","フェラガモ","ロエベ","プラダ"]},
-  {id:"watch", name:"時計",      items:["セイコー","オーデマピゲ","ピアジェ","カシオ","タグホイヤー"]},
-  {id:"stamp", name:"切手",      items:[]},
-  {id:"teleca",name:"テレカ",    items:[]},
-  {id:"coin",  name:"古銭",      items:[]}
+  {id:"gold",  name:"貴金属",    hasOther:true,  items:["インゴット","小判","金貨","リング","ネックレス","ピアス","イヤリング","ペンダント"]},
+  {id:"jewel", name:"ジュエリー", hasOther:true,  items:["ダイア","ルビー","サファイア","エメラルド","パール","サンゴ"]},
+  {id:"bag",   name:"バッグ・小物",hasOther:true, items:["LV","Hermès","CHANEL","GUCCI","COACH","フェラガモ","ロエベ","プラダ"]},
+  {id:"watch", name:"時計",      hasOther:true,  items:["セイコー","オーデマピゲ","ピアジェ","カシオ","タグホイヤー"]},
+  {id:"stamp", name:"切手",      hasOther:false, items:[]},
+  {id:"teleca",name:"テレカ",    hasOther:false, items:[]},
+  {id:"coin",  name:"古銭",      hasOther:false, items:[]}
 ];
 
 let state = {isFirst:null, selectedItems:{}, waitMode:false, queue:[], ticketCounter:0};
@@ -414,16 +414,37 @@ function buildCategories(){
         <span>${c.name} <span id="catcount-${c.id}" style="font-size:11px;display:none;background:#185FA5;color:#fff;border-radius:10px;padding:1px 7px;margin-left:4px"></span></span>
         <span id="arrow-${c.id}">▼</span>
       </div>
-      <div class="cat-items" id="cat-${c.id}">
-        ${c.items.length
-          ? c.items.map(item=>`<button class="item-btn" onclick="toggleItem('${c.id}','${item}',this)">${item}</button>`).join("")
-          : `<button class="item-btn" onclick="toggleCat2('${c.id}',this)">${c.name}全般</button>`
-        }
+      <div class="cat-items" id="cat-${c.id}" style="flex-direction:column">
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${c.items.length
+            ? c.items.map(item=>`<button class="item-btn" onclick="toggleItem('${c.id}','${item}',this)">${item}</button>`).join("")
+            : `<button class="item-btn" onclick="toggleCat2('${c.id}',this)">${c.name}全般</button>`
+          }
+          ${c.hasOther ? `<button class="item-btn" id="other-btn-${c.id}" onclick="toggleOtherCat('${c.id}',this)">その他</button>` : ""}
+        </div>
+        ${c.hasOther ? `
+        <div id="other-wrap-${c.id}" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #f0f0f0;width:100%">
+          <span style="font-size:12px;color:#888;display:block;margin-bottom:4px">その他の品物名（任意）</span>
+          <input type="text" id="other-text-${c.id}" placeholder="例：ブレスレット、ブローチ など" oninput="updateCatHeader('${c.id}')">
+        </div>` : ""}
       </div>
     </div>`).join("");
 }
 
-function toggleCat(id){
+function toggleOtherCat(catId, btn){
+  btn.classList.toggle("selected");
+  const wrap = document.getElementById("other-wrap-"+catId);
+  wrap.style.display = btn.classList.contains("selected") ? "block" : "none";
+  if(!btn.classList.contains("selected")){
+    const inp = document.getElementById("other-text-"+catId);
+    if(inp) inp.value = "";
+  }
+  updateCatHeader(catId);
+  updateSummary();
+  updateNext2();
+}
+
+
   const el    = document.getElementById("cat-"+id);
   const arrow = document.getElementById("arrow-"+id);
   const hidden = el.style.display === "none";
@@ -451,9 +472,12 @@ function toggleCat2(catId, btn){
 }
 
 function updateCatHeader(catId){
-  const count  = state.selectedItems[catId] ? state.selectedItems[catId].length : 0;
-  const header = document.getElementById("catheader-"+catId);
-  const badge  = document.getElementById("catcount-"+catId);
+  const normalCount = state.selectedItems[catId] ? state.selectedItems[catId].length : 0;
+  const otherBtn    = document.getElementById("other-btn-"+catId);
+  const otherCount  = (otherBtn && otherBtn.classList.contains("selected")) ? 1 : 0;
+  const count       = normalCount + otherCount;
+  const header      = document.getElementById("catheader-"+catId);
+  const badge       = document.getElementById("catcount-"+catId);
   if(count>0){ header.classList.add("has-selected"); badge.style.display="inline"; badge.textContent=count; }
   else        { header.classList.remove("has-selected"); badge.style.display="none"; }
 }
@@ -461,16 +485,29 @@ function updateCatHeader(catId){
 function updateSummary(){
   const bar   = document.getElementById("summary-bar");
   const parts = [];
-  Object.entries(state.selectedItems).forEach(([catId,arr])=>{
-    if(arr.length){ const cat=cats.find(c=>c.id===catId); parts.push(cat.name+(arr[0]==="全般"?"":"（"+arr.join("・")+"）")); }
+  cats.forEach(c=>{
+    const arr    = state.selectedItems[c.id] || [];
+    const otherBtn = document.getElementById("other-btn-"+c.id);
+    const otherSel = otherBtn && otherBtn.classList.contains("selected");
+    if(arr.length || otherSel){
+      let label = c.name;
+      const subItems = arr[0]==="全般" ? [] : [...arr];
+      if(otherSel) subItems.push("その他");
+      if(subItems.length) label += "（"+subItems.join("・")+"）";
+      parts.push(label);
+    }
   });
   if(parts.length){ bar.style.display="block"; bar.innerHTML="選択中："+parts.join("　/　"); }
   else { bar.style.display="none"; }
 }
 
 function updateNext2(){
-  const any = Object.values(state.selectedItems).some(a=>a.length>0);
-  document.getElementById("next2-btn").style.display = any ? "block" : "none";
+  const normalAny = Object.values(state.selectedItems).some(a=>a.length>0);
+  const otherAny  = cats.some(c=>{
+    const btn = document.getElementById("other-btn-"+c.id);
+    return btn && btn.classList.contains("selected");
+  });
+  document.getElementById("next2-btn").style.display = (normalAny || otherAny) ? "block" : "none";
 }
 
 // ---------- ステップ遷移 ----------
@@ -515,7 +552,35 @@ function submitReception(withPhone){
   const num   = String(state.ticketCounter).padStart(3,"0");
   const items = [];
   Object.entries(state.selectedItems).forEach(([catId,arr])=>{
-    if(arr.length){ const cat=cats.find(c=>c.id===catId); items.push(cat.name+(arr[0]==="全般"?"":"（"+arr.join("・")+"）")); }
+    if(arr.length){
+      const cat = cats.find(c=>c.id===catId);
+      const otherBtn = document.getElementById("other-btn-"+catId);
+      const otherTxt = document.getElementById("other-text-"+catId);
+      const otherSel = otherBtn && otherBtn.classList.contains("selected");
+      let label = cat.name;
+      const subItems = arr[0]==="全般" ? [] : [...arr];
+      if(otherSel && otherTxt && otherTxt.value.trim()) subItems.push("その他（"+otherTxt.value.trim()+"）");
+      else if(otherSel) subItems.push("その他");
+      if(subItems.length) label += "（"+subItems.join("・")+"）";
+      items.push(label);
+    } else {
+      const otherBtn = document.getElementById("other-btn-"+catId);
+      const otherTxt = document.getElementById("other-text-"+catId);
+      if(otherBtn && otherBtn.classList.contains("selected")){
+        const cat = cats.find(c=>c.id===catId);
+        const txt = otherTxt && otherTxt.value.trim() ? "その他（"+otherTxt.value.trim()+"）" : "その他";
+        items.push(cat.name+"（"+txt+"）");
+      }
+    }
+  });
+  cats.forEach(c=>{
+    if(state.selectedItems[c.id] && state.selectedItems[c.id].length) return;
+    const otherBtn = document.getElementById("other-btn-"+c.id);
+    const otherTxt = document.getElementById("other-text-"+c.id);
+    if(otherBtn && otherBtn.classList.contains("selected")){
+      const txt = otherTxt && otherTxt.value.trim() ? "その他（"+otherTxt.value.trim()+"）" : "その他";
+      items.push(c.name+"（"+txt+"）");
+    }
   });
   const ids = Array.from(document.querySelectorAll("#id-grid .item-btn.selected")).map(el=>{
     if(el.id==="other-id-btn"){ const t=document.getElementById("other-id-text").value; return t?"その他（"+t+"）":"その他"; }
@@ -533,6 +598,12 @@ function resetAll(){
   const pi = document.getElementById("phone-input"); if(pi) pi.value="";
   const ot = document.getElementById("other-id-text"); if(ot) ot.value="";
   document.querySelectorAll(".item-btn.selected").forEach(b=>b.classList.remove("selected"));
+  cats.forEach(c=>{
+    const wrap = document.getElementById("other-wrap-"+c.id);
+    if(wrap) wrap.style.display="none";
+    const inp = document.getElementById("other-text-"+c.id);
+    if(inp) inp.value="";
+  });
   document.getElementById("other-id-wrap").style.display  = "none";
   document.getElementById("summary-bar").style.display    = "none";
   buildCategories();
